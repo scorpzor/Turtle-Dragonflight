@@ -172,7 +172,8 @@ tDF.utils.create_castbar = function(unitstr, name, parent, anchor, x, y, w, h, f
 
         if not cast then
             if this.unitstr == "target" then
-                this.fadeout = 1
+                this:SetAlpha(0)
+                this.fadeout = nil
                 return
             end
 
@@ -184,7 +185,8 @@ tDF.utils.create_castbar = function(unitstr, name, parent, anchor, x, y, w, h, f
                 this.fadeout = 1
                 this.success = false
             else
-                this.fadeout = 1
+                this:SetAlpha(0)
+                this.fadeout = nil
                 this.success = false
             end
             return
