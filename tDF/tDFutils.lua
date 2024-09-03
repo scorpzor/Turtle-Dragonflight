@@ -73,13 +73,11 @@ tDF.utils.create_castbar = function(unitstr, name, parent, anchor, x, y, w, h, f
     castbar:SetWidth(w)
     castbar:SetHeight(h)
     castbar.unitstr = unitstr
-    --castbar:Hide()
 
     castbar.bg = castbar:CreateTexture(nil, "BACKGROUND")
     castbar.bg:SetTexture("Interface\\AddOns\\tDF\\img\\Castbar\\CastingBarFrame-BG")
     castbar.bg:SetWidth(w*1.015)
     castbar.bg:SetHeight(h*2.2)
-    --castbar.bg:SetPoint("TOPLEFT", castbar, "TOPLEFT", -1, h*0.26)
     castbar.bg:SetPoint("TOPLEFT", castbar, "TOPLEFT", 1, 0)
     castbar.bg:SetPoint("TOPRIGHT", castbar, "TOPRIGHT", -1, 0)
     
@@ -146,6 +144,8 @@ tDF.utils.create_castbar = function(unitstr, name, parent, anchor, x, y, w, h, f
       insets = { left = 3, right = 3, top = 3, bottom = 3 }
     })
 
+    castbar:SetAlpha(0)
+
     castbar:SetScript("OnUpdate", function()
         local channel = nil
         local name = this.unitstr and UnitName(this.unitstr) or nil
@@ -163,8 +163,34 @@ tDF.utils.create_castbar = function(unitstr, name, parent, anchor, x, y, w, h, f
             channel, nameSubtext, text, texture, startTime, endTime, isTradeSkill = UnitChannelInfo(query)
             cast = channel
         end
+        
+        if not UnitExists(this.unitstr) then
+            this:SetAlpha(0)
+        end
 
-        if not cast then this:SetAlpha(0) return end
+        tDF.utils.fadeout()
+
+        if not cast then
+            if this.unitstr == "target" then
+                this.fadeout = 1
+                return
+            end
+
+            if not this.success then
+                this:SetMinMaxValues(1,100)
+                this:SetValue(100)
+                this.text:SetText("Interrupted")
+                this:SetStatusBarColor(1, 0.1, 0.1)
+                this.fadeout = 1
+                this.success = false
+            else
+                this.fadeout = 1
+                this.success = false
+            end
+            return
+        end
+
+        this:SetStatusBarColor(1, .8, 0, 1)
         this:SetAlpha(1)
         local duration = endTime - startTime
         local max = duration / 1000
@@ -176,9 +202,8 @@ tDF.utils.create_castbar = function(unitstr, name, parent, anchor, x, y, w, h, f
         cur = cur < 0 and 0 or cur
 
         local rem = max - cur
-        rem = string.format("%.1f".."s", rem)
+        local rem_str = string.format("%.1f".."s", rem)
 
-        this:Show()
         this:SetMinMaxValues(0, duration / 1000)
         this:SetValue(cur)
 
@@ -187,9 +212,10 @@ tDF.utils.create_castbar = function(unitstr, name, parent, anchor, x, y, w, h, f
         this.spark:SetPoint("CENTER", this, "LEFT", x, 0)
 
         this.text:SetText(cast)
-        this.timerText:SetText(rem)
+        this.timerText:SetText(rem_str)
+        local _, _, lag = GetNetStats()
+        local rem_end = math.max(0.1,lag*0.001)
         if this.lagText then
-            local _, _, lag = GetNetStats()
             local width = castbar:GetWidth() / (duration/1000) * (lag/1000)
             this.lag:SetWidth(math.min(castbar:GetWidth(), width))
             this.lagText:SetText(lag .. "ms")
@@ -203,8 +229,20 @@ tDF.utils.create_castbar = function(unitstr, name, parent, anchor, x, y, w, h, f
             this.texture:Hide()
             this.texture.icon:Hide()
         end
+        if rem <= rem_end then this.success = true end
+        this.fadeout = nil
 
     end)
 
     return castbar
+end
+
+tDF.utils.fadeout = function()
+    if this.fadeout and this:GetAlpha() > 0 then
+        if this:GetAlpha() == 0 then
+            this.fadeout = nil
+        end
+
+        this:SetAlpha(this:GetAlpha()-0.02)
+    end
 end
